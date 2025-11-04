@@ -1,1 +1,494 @@
 # UIII-Act-2-Tres-tablas-del-negocio-Futbol-primera-parte
+# Proyecto: Futbol_Partidos - Primera Parte
+
+## 1. Crear carpeta del Proyecto
+```bash
+mkdir UIII_Futbol_0562
+```
+
+## 2. Abrir VS Code sobre la carpeta
+```bash
+cd UIII_Futbol_0562
+code .
+```
+
+## 3. Abrir terminal en VS Code
+- `Ctrl + Ñ` o `View > Terminal`
+
+## 4. Crear entorno virtual
+```bash
+python -m venv .venv
+```
+
+## 5. Activar entorno virtual
+**Windows:**
+```bash
+.venv\Scripts\activate
+```
+**Linux/Mac:**
+```bash
+source .venv/bin/activate
+```
+
+## 6. Activar intérprete de Python
+- `Ctrl + Shift + P`
+- Buscar: "Python: Select Interpreter"
+- Seleccionar: `./.venv/Scripts/python.exe`
+
+## 7. Instalar Django
+```bash
+pip install django
+```
+
+## 8. Crear proyecto sin duplicar carpeta
+```bash
+django-admin startproject backend_Futbol .
+```
+
+## 9. Ejecutar servidor en puerto 8036
+```bash
+python manage.py runserver 8036
+```
+
+## 10. Copiar y pegar link en navegador
+```
+http://127.0.0.1:8036/
+```
+
+## 11. Crear aplicación app_Futbol
+```bash
+python manage.py startapp app_Futbol
+```
+
+## 12. Modelo models.py para app_Futbol/models.py
+```python
+from django.db import models
+
+# ==========================================
+# MODELO: EQUIPO
+# ==========================================
+class Equipo(models.Model):
+    nombre = models.CharField(max_length=100)
+    ciudad = models.CharField(max_length=100)
+    pais = models.CharField(max_length=100)
+    fundacion = models.DateField()
+    estadio = models.CharField(max_length=100)
+    entrenador = models.CharField(max_length=100)
+    colores = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.nombre
+
+# ==========================================
+# MODELO: JUGADOR
+# ==========================================
+class Jugador(models.Model):
+    POSICIONES = [
+        ('POR', 'Portero'),
+        ('DEF', 'Defensa'),
+        ('MED', 'Mediocampista'),
+        ('DEL', 'Delantero'),
+    ]
+    
+    nombre = models.CharField(max_length=100)
+    apellido = models.CharField(max_length=100)
+    fecha_nacimiento = models.DateField()
+    nacionalidad = models.CharField(max_length=100)
+    posicion = models.CharField(max_length=3, choices=POSICIONES)
+    numero_camiseta = models.PositiveIntegerField()
+    equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name="jugadores")
+    
+    def __str__(self):
+        return f"{self.nombre} {self.apellido}"
+
+# ==========================================
+# MODELO: PARTIDO
+# ==========================================
+class Partido(models.Model):
+    ESTADOS = [
+        ('PEN', 'Pendiente'),
+        ('JUG', 'Jugándose'),
+        ('FIN', 'Finalizado'),
+        ('SUS', 'Suspendido'),
+    ]
+    
+    fecha = models.DateTimeField()
+    estadio = models.CharField(max_length=100)
+    equipo_local = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name="partidos_local")
+    equipo_visitante = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name="partidos_visitante")
+    goles_local = models.PositiveIntegerField(default=0)
+    goles_visitante = models.PositiveIntegerField(default=0)
+    estado = models.CharField(max_length=3, choices=ESTADOS, default='PEN')
+    
+    def __str__(self):
+        return f"{self.equipo_local} vs {self.equipo_visitante} - {self.fecha}"
+```
+
+## 12.5 Realizar migraciones
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+## 13. Trabajar primero con MODELO: EQUIPO
+
+## 14. Views de app_Futbol (app_Futbol/views.py)
+```python
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Equipo, Jugador, Partido
+
+# ==========================================
+# VISTAS PARA EQUIPO
+# ==========================================
+def inicio_futbol(request):
+    return render(request, 'inicio.html')
+
+def agregar_equipo(request):
+    if request.method == 'POST':
+        Equipo.objects.create(
+            nombre=request.POST['nombre'],
+            ciudad=request.POST['ciudad'],
+            pais=request.POST['pais'],
+            fundacion=request.POST['fundacion'],
+            estadio=request.POST['estadio'],
+            entrenador=request.POST['entrenador'],
+            colores=request.POST['colores']
+        )
+        return redirect('ver_equipos')
+    return render(request, 'equipo/agregar_equipo.html')
+
+def ver_equipos(request):
+    equipos = Equipo.objects.all()
+    return render(request, 'equipo/ver_equipos.html', {'equipos': equipos})
+
+def actualizar_equipo(request, id):
+    equipo = get_object_or_404(Equipo, id=id)
+    return render(request, 'equipo/actualizar_equipo.html', {'equipo': equipo})
+
+def realizar_actualizacion_equipo(request, id):
+    if request.method == 'POST':
+        equipo = get_object_or_404(Equipo, id=id)
+        equipo.nombre = request.POST['nombre']
+        equipo.ciudad = request.POST['ciudad']
+        equipo.pais = request.POST['pais']
+        equipo.fundacion = request.POST['fundacion']
+        equipo.estadio = request.POST['estadio']
+        equipo.entrenador = request.POST['entrenador']
+        equipo.colores = request.POST['colores']
+        equipo.save()
+        return redirect('ver_equipos')
+    return redirect('ver_equipos')
+
+def borrar_equipo(request, id):
+    equipo = get_object_or_404(Equipo, id=id)
+    return render(request, 'equipo/borrar_equipo.html', {'equipo': equipo})
+
+def realizar_borrado_equipo(request, id):
+    if request.method == 'POST':
+        equipo = get_object_or_404(Equipo, id=id)
+        equipo.delete()
+        return redirect('ver_equipos')
+    return redirect('ver_equipos')
+```
+
+## 15. Crear carpeta templates
+```bash
+mkdir app_Futbol\templates
+```
+
+## 16. Crear archivos HTML base en templates
+- `base.html`
+- `header.html`
+- `navbar.html`
+- `footer.html`
+- `inicio.html`
+
+## 17. base.html
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Fútbol</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .navbar-custom {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+        }
+        .footer-custom {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    {% include 'header.html' %}
+    {% include 'navbar.html' %}
+    
+    <div class="container mt-4">
+        {% block content %}
+        {% endblock %}
+    </div>
+    
+    {% include 'footer.html' %}
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+```
+
+## 18. navbar.html
+```html
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'inicio_futbol' %}">
+            ⚽ Sistema de Administración Fútbol
+        </a>
+        
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link" href="{% url 'inicio_futbol' %}">
+                🏠 Inicio
+            </a>
+            
+            <div class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    👥 Equipos
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'agregar_equipo' %}">Agregar Equipo</a></li>
+                    <li><a class="dropdown-item" href="{% url 'ver_equipos' %}">Ver Equipos</a></li>
+                </ul>
+            </div>
+            
+            <div class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    👤 Jugadores
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Agregar Jugador</a></li>
+                    <li><a class="dropdown-item" href="#">Ver Jugadores</a></li>
+                </ul>
+            </div>
+            
+            <div class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    🏆 Partidos
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Agregar Partido</a></li>
+                    <li><a class="dropdown-item" href="#">Ver Partidos</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+```
+
+## 19. footer.html
+```html
+<footer class="footer-custom text-center py-3 mt-5">
+    <div class="container">
+        <span>
+            &copy; {% now "Y" %} - Sistema de Fútbol - 
+            Creado por Ing. Eliseo Nava, Cbtis 128 - 
+            Fecha: {% now "d/m/Y" %}
+        </span>
+    </div>
+</footer>
+```
+
+## 20. inicio.html
+```html
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto text-center">
+        <h1 class="mb-4">⚽ Sistema de Gestión de Fútbol</h1>
+        <p class="lead">Bienvenido al sistema de administración de equipos, jugadores y partidos de fútbol</p>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" 
+                     class="img-fluid rounded" 
+                     alt="Fútbol" 
+                     style="max-height: 400px;">
+                <p class="mt-3">Gestiona equipos, jugadores y partidos de forma eficiente</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+```
+
+## 21. Crear subcarpeta equipo
+```bash
+mkdir app_Futbol\templates\equipo
+```
+
+## 22. Crear archivos HTML para equipo
+- `agregar_equipo.html`
+- `ver_equipos.html`
+- `actualizar_equipo.html`
+- `borrar_equipo.html`
+
+### agregar_equipo.html
+```html
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <h2>Agregar Nuevo Equipo</h2>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Nombre</label>
+                <input type="text" class="form-control" name="nombre" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Ciudad</label>
+                <input type="text" class="form-control" name="ciudad" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">País</label>
+                <input type="text" class="form-control" name="pais" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fundación</label>
+                <input type="date" class="form-control" name="fundacion" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Estadio</label>
+                <input type="text" class="form-control" name="estadio" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Entrenador</label>
+                <input type="text" class="form-control" name="entrenador" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Colores</label>
+                <input type="text" class="form-control" name="colores" required>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Equipo</button>
+            <a href="{% url 'ver_equipos' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+```
+
+### ver_equipos.html
+```html
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Lista de Equipos</h2>
+<a href="{% url 'agregar_equipo' %}" class="btn btn-primary mb-3">➕ Agregar Nuevo Equipo</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Ciudad</th>
+            <th>País</th>
+            <th>Estadio</th>
+            <th>Entrenador</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for equipo in equipos %}
+        <tr>
+            <td>{{ equipo.nombre }}</td>
+            <td>{{ equipo.ciudad }}</td>
+            <td>{{ equipo.pais }}</td>
+            <td>{{ equipo.estadio }}</td>
+            <td>{{ equipo.entrenador }}</td>
+            <td>
+                <a href="{% url 'actualizar_equipo' equipo.id %}" class="btn btn-warning btn-sm">✏️ Editar</a>
+                <a href="{% url 'borrar_equipo' equipo.id %}" class="btn btn-danger btn-sm">🗑️ Borrar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+```
+
+## 23. No usar forms.py (ya está implementado sin forms)
+
+## 24. urls.py de app_Futbol
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.inicio_futbol, name='inicio_futbol'),
+    
+    # URLs para Equipos
+    path('equipos/agregar/', views.agregar_equipo, name='agregar_equipo'),
+    path('equipos/', views.ver_equipos, name='ver_equipos'),
+    path('equipos/actualizar/<int:id>/', views.actualizar_equipo, name='actualizar_equipo'),
+    path('equipos/realizar_actualizacion/<int:id>/', views.realizar_actualizacion_equipo, name='realizar_actualizacion_equipo'),
+    path('equipos/borrar/<int:id>/', views.borrar_equipo, name='borrar_equipo'),
+    path('equipos/realizar_borrado/<int:id>/', views.realizar_borrado_equipo, name='realizar_borrado_equipo'),
+]
+```
+
+## 25. Agregar app_Futbol en settings.py
+```python
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'app_Futbol',  # Agregar esta línea
+]
+```
+
+## 26. Configurar urls.py del proyecto
+```python
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('app_Futbol.urls')),
+]
+```
+
+## 27. Registrar modelos en admin.py
+```python
+from django.contrib import admin
+from .models import Equipo, Jugador, Partido
+
+admin.site.register(Equipo)
+admin.site.register(Jugador)
+admin.site.register(Partido)
+```
+
+## 28. Realizar migraciones nuevamente
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+## 29. Ejecutar servidor
+```bash
+python manage.py runserver 8036
+```
+
+El proyecto estará funcionando en `http://127.0.0.1:8036/` con el CRUD completo para Equipos.
